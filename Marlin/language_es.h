@@ -33,6 +33,7 @@
 #define DISPLAY_CHARSET_ISO10646_1
 #define NOT_EXTENDED_ISO10646_1_5X7
 #define CHARSIZE 2
+
 #define WELCOME_MSG                         MACHINE_NAME _UxGT(" lista.")
 #define MSG_BACK                            _UxGT("Atras")
 #define MSG_SD_INSERTED                     _UxGT("Tarjeta colocada")
@@ -222,6 +223,7 @@
 #define MSG_INFO_BAUDRATE                   _UxGT("Baudios")
 #define MSG_INFO_PROTOCOL                   _UxGT("Protocolo")
 #define MSG_CASE_LIGHT                      _UxGT("Luz cabina")
+
 #if LCD_WIDTH > 19
   #define MSG_INFO_PRINT_COUNT              _UxGT("Conteo de impresion")
   #define MSG_INFO_COMPLETED_PRINTS         _UxGT("Completadas")

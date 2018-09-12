@@ -59,7 +59,7 @@
   #define Z_STOP_PIN       10
 
 #else
-
+  
   #define X_STOP_PIN       X_DIAG_PIN
   #define Y_STOP_PIN       Y_DIAG_PIN
 
@@ -68,6 +68,10 @@
     #define SERVO0_PIN     10   // Z-MIN
   #else
     #define Z_STOP_PIN     10
+  #endif
+
+  #if ENABLED(DELTA)
+    #define Z_STOP_PIN          Z_DIAG_PIN
   #endif
 
 #endif
