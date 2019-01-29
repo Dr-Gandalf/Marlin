@@ -1942,9 +1942,10 @@ bool Planner::_populate_block(block_t * const block, bool split_move,
     // Segment time im micro seconds
     uint32_t segment_time_us = LROUND(1000000.0f / inverse_secs);
   #endif
-
+  //SERIAL_ECHOPAIR("  moves_queued:", moves_queued);
   #if ENABLED(SLOWDOWN)
     if (WITHIN(moves_queued, 2, (BLOCK_BUFFER_SIZE) / 2 - 1)) {
+      //SERIAL_ECHOPAIR("  moves_queued:", moves_queued);
       if (segment_time_us < min_segment_time_us) {
         // buffer is draining, add extra time.  The amount of time added increases if the buffer is still emptied more.
         const uint32_t nst = segment_time_us + LROUND(2 * (min_segment_time_us - segment_time_us) / moves_queued);

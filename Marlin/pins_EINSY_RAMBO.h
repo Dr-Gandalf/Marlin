@@ -66,8 +66,6 @@
   #if ENABLED(BLTOUCH)
     #define Z_STOP_PIN     11   // Y-MIN
     #define SERVO0_PIN     10   // Z-MIN
-  #else
-    #define Z_STOP_PIN     10
   #endif
 
   #if ENABLED(DELTA)
@@ -117,7 +115,7 @@
 // Heaters / Fans
 //
 #define HEATER_0_PIN        3
-#define HEATER_BED_PIN      4
+#define HEATER_BED_PIN      76
 
 #ifndef FAN_PIN
   #define FAN_PIN           8

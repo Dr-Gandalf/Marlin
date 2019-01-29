@@ -45,6 +45,7 @@
 // https://store.bq.com/en/heated-bed-kit-hephestos2
 //
 //#define HEPHESTOS2_HEATED_BED_KIT
+#define HEATER_BED_INVERTING true
 #if ENABLED(HEPHESTOS2_HEATED_BED_KIT)
   #undef TEMP_SENSOR_BED
   #define TEMP_SENSOR_BED 70
@@ -220,7 +221,7 @@
  */
 
 
-//#define FAN_MIN_PWM 50
+#define FAN_MIN_PWM 72
 //#define FAN_MAX_PWM 128
 
 // @section extruder
@@ -243,7 +244,7 @@
 #define E3_AUTO_FAN_PIN -1
 #define E4_AUTO_FAN_PIN -1
 #define EXTRUDER_AUTO_FAN_TEMPERATURE 50
-#define EXTRUDER_AUTO_FAN_SPEED   128  // == full speed
+#define EXTRUDER_AUTO_FAN_SPEED   255  // == full speed
 
 /**
  * Part-Cooling Fan Multiplexer
@@ -379,9 +380,9 @@
 // @section homing
 
 // Homing hits each endstop, retracts by these distances, then does a slower bump.
-#define X_HOME_BUMP_MM 5
-#define Y_HOME_BUMP_MM 5
-#define Z_HOME_BUMP_MM 5 // deltas need the same for all three axes
+#define X_HOME_BUMP_MM 0
+#define Y_HOME_BUMP_MM 0
+#define Z_HOME_BUMP_MM 0 // deltas need the same for all three axes
 
 #define HOMING_BUMP_DIVISOR { 10, 10, 10 }  // Re-Bump Speed Divisor (Divides the Homing Feedrate)
 //#define QUICK_HOME                     // If homing includes X and Y, do a diagonal move initially
@@ -433,7 +434,7 @@
 #define DEFAULT_MINSEGMENTTIME        20000
 
 // If defined the movements slow down when the look ahead buffer is only half full
-#define SLOWDOWN
+//#define SLOWDOWN
 
 // Frequency limit
 // See nophead's blog for more info
@@ -774,9 +775,9 @@
  * See http://marlinfw.org/docs/features/lin_advance.html for full instructions.
  * Mention @Sebastianv650 on GitHub to alert the author of any issues.
  */
-//#define LIN_ADVANCE
+#define LIN_ADVANCE
 #if ENABLED(LIN_ADVANCE)
-  #define LIN_ADVANCE_K 0.22  // Unit: mm compression per 1mm/s extruder speed
+  #define LIN_ADVANCE_K 0.0  // Unit: mm compression per 1mm/s extruder speed
   //#define LA_DEBUG          // If enabled, this will generate debug information output over USB.
 #endif
 
@@ -1151,13 +1152,13 @@
   #define INTERPOLATE       true  // Interpolate X/Y/Z_MICROSTEPS to 256
 
   #define X_CURRENT          950  // rms current in mA. Multiply by 1.41 for peak current.
-  #define X_MICROSTEPS        16  // 0..256
+  #define X_MICROSTEPS        XYZ_MICROSTEPS  // 0..256
 
   #define Y_CURRENT          950
-  #define Y_MICROSTEPS        16
+  #define Y_MICROSTEPS        XYZ_MICROSTEPS
 
   #define Z_CURRENT          950
-  #define Z_MICROSTEPS        16
+  #define Z_MICROSTEPS        XYZ_MICROSTEPS
 
   #define X2_CURRENT         800
   #define X2_MICROSTEPS       16
@@ -1253,9 +1254,9 @@
   #define SENSORLESS_HOMING // TMC2130 only
 
   #if ENABLED(SENSORLESS_HOMING)
-    #define X_HOMING_SENSITIVITY  4
-    #define Y_HOMING_SENSITIVITY  4
-    #define Z_HOMING_SENSITIVITY  4
+    #define X_HOMING_SENSITIVITY  3
+    #define Y_HOMING_SENSITIVITY  3
+    #define Z_HOMING_SENSITIVITY  3
   #endif
 
   /**
