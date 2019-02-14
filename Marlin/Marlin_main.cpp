@@ -3937,7 +3937,7 @@ inline void gcode_G4() {
 
     // Move all carriages together linearly until an endstop is hit.
     current_position[X_AXIS] = current_position[Y_AXIS] = current_position[Z_AXIS] = (delta_height + 10);
-    feedrate_mm_s = homing_feedrate(X_AXIS);
+    feedrate_mm_s = homing_feedrate(Z_AXIS);
     buffer_line_to_current_position();
     planner.synchronize();
 

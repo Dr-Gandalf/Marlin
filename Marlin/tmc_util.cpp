@@ -148,6 +148,8 @@ bool report_tmc_status = false;
       SERIAL_ECHOPAIR(":", pwm_scale);
       SERIAL_ECHOPGM(" |0b"); SERIAL_PRINT(get_status_response(st), BIN);
       SERIAL_ECHOPGM("| ");
+      SERIAL_ECHOPGM("| "); SERIAL_PRINT(st.sg_result(), DEC);
+      SERIAL_ECHOPGM("| ");
       if (data.is_error) SERIAL_CHAR('E');
       else if (data.is_ot) SERIAL_CHAR('O');
       else if (data.is_otpw) SERIAL_CHAR('W');
@@ -162,7 +164,7 @@ bool report_tmc_status = false;
   void monitor_tmc_driver() {
     static millis_t next_cOT = 0;
     if (ELAPSED(millis(), next_cOT)) {
-      next_cOT = millis() + 500;
+      next_cOT = millis() + 100;
       #if HAS_HW_COMMS(X)
         static uint8_t x_otpw_cnt = 0;
         monitor_tmc_driver(stepperX, TMC_X, x_otpw_cnt);
