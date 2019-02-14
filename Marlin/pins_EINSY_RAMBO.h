@@ -52,6 +52,8 @@
 // SERVO0_PIN and Z_MIN_PIN configuration for BLTOUCH sensor when combined with SENSORLESS_HOMING.
 //
 
+#define FIL_RUNOUT_PIN 12 //x min endstop conector on the board
+
 #if DISABLED(SENSORLESS_HOMING)
 
   #define X_STOP_PIN       12
