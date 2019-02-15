@@ -130,7 +130,7 @@
 //
 // Misc. Functions
 //
-#define SDSS               77
+#define SDSS               77 //sd_ss aux2
 #define LED_PIN            13
 #define CASE_LIGHT_PIN      9
 
@@ -154,7 +154,7 @@
 //
 #if ENABLED(ULTRA_LCD)
 
-  #define KILL_PIN         32
+  //#define KILL_PIN         32
 
   #if ENABLED(NEWPANEL)
 
@@ -165,19 +165,19 @@
       #define BTN_EN1         61
       #define BTN_EN2         59
     #else
-      #define LCD_PINS_RS     82
-      #define LCD_PINS_ENABLE 61
-      #define LCD_PINS_D4     59
-      #define LCD_PINS_D5     70
-      #define LCD_PINS_D6     85
-      #define LCD_PINS_D7     71
-      #define BTN_EN1         14
-      #define BTN_EN2         72
+      #define LCD_PINS_RS     82  // pd5 aux1
+      #define LCD_PINS_ENABLE 61  // pf7 aux1
+      #define LCD_PINS_D4     59  //pf5 aux1
+      #define LCD_PINS_D5     70  //pg4 aux1 
+      #define LCD_PINS_D6     85  //ph7 aux1
+      #define LCD_PINS_D7     71  //pg3 aux1
+      #define BTN_EN1         14  //tx3 aux2
+      #define BTN_EN2         72  //pj2 aux2
     #endif
 
-    #define BTN_ENC            9   // AUX-2
-    #define BEEPER_PIN        84   // AUX-4
-    #define SD_DETECT_PIN     15
+    #define BTN_ENC            9   // AUX-1 ph6
+    #define BEEPER_PIN        84   // AUX-2 ph2
+    #define SD_DETECT_PIN     15   //rx3 aux2
 
   #endif // NEWPANEL
 #endif // ULTRA_LCD
