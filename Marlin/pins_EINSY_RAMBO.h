@@ -56,9 +56,9 @@
 
 #if DISABLED(SENSORLESS_HOMING)
 
-  #define X_STOP_PIN       12
+  #define X_STOP_PIN       80 //12 tack 1 80 
   #define Y_STOP_PIN       11
-  #define Z_STOP_PIN       10
+  #define Z_STOP_PIN       79 //10 tack 2 79
 
 #else
   
