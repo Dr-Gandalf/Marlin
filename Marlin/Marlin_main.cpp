@@ -370,6 +370,39 @@
 
 bool Running = true;
 
+
+//************************************************************
+//************** crach detection jcastillo********************
+//************************************************************
+//used for PINDA temp calibration and pause print
+#define DEFAULT_RETRACTION    1
+
+#define PRINTING_TYPE_SD 0
+#define PRINTING_TYPE_USB 1
+
+// save/restore printing
+bool saved_printing = false;
+float default_retraction = DEFAULT_RETRACTION;
+
+// save/restore printing
+static uint32_t saved_sdpos = 0;
+static uint8_t saved_printing_type = PRINTING_TYPE_SD;
+static float saved_pos[4] = { 0, 0, 0, 0 };
+// Feedrate hopefully derived from an active block of the planner at the time the print has been canceled, in mm/min.
+static float saved_feedrate2 = 0;
+static uint8_t saved_active_extruder = 0;
+static bool saved_extruder_under_pressure = false;
+static bool saved_extruder_relative_mode = false;
+uint32_t sdpos_atomic = 0;
+
+uint16_t cmdqueue_calc_sd_length();
+
+static float feedrate = 1500.0, next_feedrate, saved_feedrate;
+
+//************************************************************
+//************************************************************
+//************************************************************
+
 uint8_t marlin_debug_flags = DEBUG_NONE;
 
 /**
@@ -682,7 +715,10 @@ static bool send_ok[BUFSIZE];
     #define STOW_Z_SERVO() MOVE_SERVO(Z_PROBE_SERVO_NR, z_servo_angle[1])
   #endif
 #endif
-
+//****jc***
+void stop_and_save_print_to_ram(float z_move, float e_move);
+void restore_print_from_ram_and_continue(float e_move);
+//****jca**
 #ifdef CHDK
   millis_t chdkHigh = 0;
   bool chdkActive = false;
@@ -839,6 +875,11 @@ void enqueue_and_echo_commands_P(const char * const pgcode) {
   injected_commands_P = pgcode;
   (void)drain_injected_commands_P(); // first command executed asap (when possible)
 }
+
+void enquecommand(const char *cmd, bool pgm){
+  injected_commands_P = cmd;
+  (void)drain_injected_commands_P(); // first command executed asap (when possible)
+};
 
 /**
  * Clear the Marlin command queue
@@ -4382,7 +4423,7 @@ void home_all_axes() { gcode_G28(true); }
       case MeshStart:
         mbl.reset();
         mbl_probe_index = 0;
-        if (!lcd_wait_for_move) {
+        if (!lcd_wait_for_move) {enqueue_and_echo_commands_P
           enqueue_and_echo_commands_P(PSTR("G28\nG29 S2"));
           return;
         }
@@ -11301,7 +11342,135 @@ inline void gcode_M502() {
       }
     }
   #endif // HYBRID_THRESHOLD
+  
 
+  #if HAS_DRIVER(TMC2130)
+
+    extern int8_t CrashDetectMenu;
+
+    void crashdet_enable()
+    {
+      tmc2130_sg_stop_on_crash = true;
+      CrashDetectMenu = 1;
+
+    }
+
+    void crashdet_disable()
+    {
+      tmc2130_sg_stop_on_crash = false;
+      tmc2130_sg_crash = 0; 
+      CrashDetectMenu = 0;
+    }
+
+    void crashdet_stop_and_save_print()
+    {
+      stop_and_save_print_to_ram(10, -default_retraction); //XY - no change, Z 10mm up, E -1mm retract
+    }
+
+    void crashdet_restore_print_and_continue()
+    {
+      restore_print_from_ram_and_continue(default_retraction); //XYZ = orig, E +1mm unretract
+    //	babystep_apply();
+    }
+
+
+    /*void crashdet_stop_and_save_print2()
+    {
+      cli();
+      planner_abort_hard(); //abort printing
+      cmdqueue_reset(); //empty cmdqueue
+      card.sdprinting = false;
+      card.closefile();
+      // Reset and re-enable the stepper timer just before the global interrupts are enabled.
+      st_reset_timer();
+      sei();
+    }
+
+    void crashdet_detected(uint8_t mask)
+    {
+      st_synchronize();
+      static uint8_t crashDet_counter = 0;
+      bool automatic_recovery_after_crash = true;
+
+      if (crashDet_counter++ == 0) {
+        crashDetTimer.start();
+      }
+      else if (crashDetTimer.expired(CRASHDET_TIMER * 1000ul)){
+        crashDetTimer.stop();
+        crashDet_counter = 0;
+      }
+      else if(crashDet_counter == CRASHDET_COUNTER_MAX){
+        automatic_recovery_after_crash = false;
+        crashDetTimer.stop();
+        crashDet_counter = 0;
+      }
+      else {
+        crashDetTimer.start();
+      }
+
+      lcd_update_enable(true);
+      lcd_clear();
+      lcd_update(2);
+
+      if (mask & X_AXIS_MASK)
+      {
+        eeprom_update_byte((uint8_t*)EEPROM_CRASH_COUNT_X, eeprom_read_byte((uint8_t*)EEPROM_CRASH_COUNT_X) + 1);
+        eeprom_update_word((uint16_t*)EEPROM_CRASH_COUNT_X_TOT, eeprom_read_word((uint16_t*)EEPROM_CRASH_COUNT_X_TOT) + 1);
+      }
+      if (mask & Y_AXIS_MASK)
+      {
+        eeprom_update_byte((uint8_t*)EEPROM_CRASH_COUNT_Y, eeprom_read_byte((uint8_t*)EEPROM_CRASH_COUNT_Y) + 1);
+        eeprom_update_word((uint16_t*)EEPROM_CRASH_COUNT_Y_TOT, eeprom_read_word((uint16_t*)EEPROM_CRASH_COUNT_Y_TOT) + 1);
+      }
+        
+
+
+      lcd_update_enable(true);
+      lcd_update(2);
+      lcd_setstatuspgm(_T(MSG_CRASH_DETECTED));
+      gcode_G28(true, true, false); //home X and Y
+      st_synchronize();
+
+      if (automatic_recovery_after_crash) {
+        enquecommand_P(PSTR("CRASH_RECOVER"));
+      }else{
+        HotendTempBckp = degTargetHotend(active_extruder);
+        setTargetHotend(0, active_extruder);
+        bool yesno = lcd_show_fullscreen_message_yes_no_and_wait_P(_i("Crash detected. Resume print?"), false);
+        lcd_update_enable(true);
+        if (yesno)
+        {
+          char cmd1[10];
+          strcpy(cmd1, "M109 S");
+          strcat(cmd1, ftostr3(HotendTempBckp));
+          enquecommand(cmd1);
+          enquecommand_P(PSTR("CRASH_RECOVER"));
+        }
+        else
+        {
+          enquecommand_P(PSTR("CRASH_CANCEL"));
+        }
+      }
+    }
+
+    void crashdet_recover()
+    {
+      crashdet_restore_print_and_continue();
+      tmc2130_sg_stop_on_crash = true;
+    }
+
+    void crashdet_cancel()
+    {
+      tmc2130_sg_stop_on_crash = true;
+      if (saved_printing_type == PRINTING_TYPE_SD) {
+        lcd_print_stop();
+      }else if(saved_printing_type == PRINTING_TYPE_USB){
+        SERIAL_ECHOLNPGM("// action:cancel"); //for Octoprint: works the same as clicking "Abort" button in Octoprint GUI
+        SERIAL_PROTOCOLLNRPGM(_T(MSG_OK));
+      }
+    }*/
+
+  #endif //TMC2130
   /**
    * M914: Set SENSORLESS_HOMING sensitivity.
    */
@@ -12698,6 +12867,7 @@ void process_next_command() {
   // Parse the next command in the queue
   parser.parse(current_command);
   process_parsed_command();
+  sdpos_atomic = card.get_sdpos()+1;
 }
 
 /**
@@ -14119,6 +14289,251 @@ void disable_all_steppers() {
   disable_e_steppers();
 }
 
+//**** JC***
+
+////////////////////////////////////////////////////////////////////////////////
+// save/restore printing
+
+void stop_and_save_print_to_ram(float z_move, float e_move)
+{
+	if (saved_printing) return;
+#if 0
+	unsigned char nplanner_blocks;
+#endif
+	unsigned char nlines;
+	uint16_t sdlen_planner;
+	uint16_t sdlen_cmdqueue;
+	
+
+	cli();
+	if (card.sdprinting) {
+#if 0
+		nplanner_blocks = number_of_blocks();
+#endif
+		saved_sdpos = sdpos_atomic; //atomic sd position of last command added in queue
+		sdlen_planner = planner_calc_sd_length(); //length of sd commands in planner
+		saved_sdpos -= sdlen_planner;
+		sdlen_cmdqueue = cmdqueue_calc_sd_length(); //length of sd commands in cmdqueue
+		saved_sdpos -= sdlen_cmdqueue;
+		saved_printing_type = PRINTING_TYPE_SD;
+
+	}
+
+#if 0
+  SERIAL_ECHOPGM("SDPOS_ATOMIC="); MYSERIAL.println(sdpos_atomic, DEC);
+  SERIAL_ECHOPGM("SDPOS="); MYSERIAL.println(card.get_sdpos(), DEC);
+  SERIAL_ECHOPGM("SDLEN_PLAN="); MYSERIAL.println(sdlen_planner, DEC);
+  SERIAL_ECHOPGM("SDLEN_CMDQ="); MYSERIAL.println(sdlen_cmdqueue, DEC);
+  SERIAL_ECHOPGM("PLANNERBLOCKS="); MYSERIAL.println(int(nplanner_blocks), DEC);
+  SERIAL_ECHOPGM("SDSAVED="); MYSERIAL.println(saved_sdpos, DEC);
+  //SERIAL_ECHOPGM("SDFILELEN="); MYSERIAL.println(card.fileSize(), DEC);
+
+
+  {
+    card.setIndex(saved_sdpos);
+    SERIAL_ECHOLNPGM("Content of planner buffer: ");
+    for (unsigned int idx = 0; idx < sdlen_planner; ++ idx)
+      MYSERIAL.print(char(card.get()));
+    SERIAL_ECHOLNPGM("Content of command buffer: ");
+    for (unsigned int idx = 0; idx < sdlen_cmdqueue; ++ idx)
+      MYSERIAL.print(char(card.get()));
+    SERIAL_ECHOLNPGM("End of command buffer");
+  }
+  {
+    // Print the content of the planner buffer, line by line:
+    card.setIndex(saved_sdpos);
+    int8_t iline = 0;
+    for (unsigned char idx = block_buffer_tail; idx != block_buffer_head; idx = (idx + 1) & (BLOCK_BUFFER_SIZE - 1), ++ iline) {
+      SERIAL_ECHOPGM("Planner line (from file): ");
+      MYSERIAL.print(int(iline), DEC);
+      SERIAL_ECHOPGM(", length: ");
+      MYSERIAL.print(block_buffer[idx].sdlen, DEC);
+      SERIAL_ECHOPGM(", steps: (");
+      MYSERIAL.print(block_buffer[idx].steps_x, DEC);
+      SERIAL_ECHOPGM(",");
+      MYSERIAL.print(block_buffer[idx].steps_y, DEC);
+      SERIAL_ECHOPGM(",");
+      MYSERIAL.print(block_buffer[idx].steps_z, DEC);
+      SERIAL_ECHOPGM(",");
+      MYSERIAL.print(block_buffer[idx].steps_e, DEC);
+      SERIAL_ECHOPGM("), events: ");
+      MYSERIAL.println(block_buffer[idx].step_event_count, DEC);
+      for (int len = block_buffer[idx].sdlen; len > 0; -- len)
+        MYSERIAL.print(char(card.get()));
+    }
+  }
+  {
+    // Print the content of the command buffer, line by line:
+    int8_t iline = 0;
+    union {
+        struct {
+            char lo;
+            char hi;
+        } lohi;
+        uint16_t value;
+    } sdlen_single;
+    int _bufindr = bufindr;
+	for (int _buflen  = buflen; _buflen > 0; ++ iline) {
+        if (cmdbuffer[_bufindr] == CMDBUFFER_CURRENT_TYPE_SDCARD) {
+            sdlen_single.lohi.lo = cmdbuffer[_bufindr + 1];
+            sdlen_single.lohi.hi = cmdbuffer[_bufindr + 2];
+        }		 
+        SERIAL_ECHOPGM("Buffer line (from buffer): ");
+        MYSERIAL.print(int(iline), DEC);
+        SERIAL_ECHOPGM(", type: ");
+        MYSERIAL.print(int(cmdbuffer[_bufindr]), DEC);
+        SERIAL_ECHOPGM(", len: ");
+        MYSERIAL.println(sdlen_single.value, DEC);
+        // Print the content of the buffer line.
+        MYSERIAL.println(cmdbuffer + _bufindr + CMDHDRSIZE);
+
+        SERIAL_ECHOPGM("Buffer line (from file): ");
+        MYSERIAL.println(int(iline), DEC);
+        for (; sdlen_single.value > 0; -- sdlen_single.value)
+          MYSERIAL.print(char(card.get()));
+
+        if (-- _buflen == 0)
+          break;
+        // First skip the current command ID and iterate up to the end of the string.
+        for (_bufindr += CMDHDRSIZE; cmdbuffer[_bufindr] != 0; ++ _bufindr) ;
+        // Second, skip the end of string null character and iterate until a nonzero command ID is found.
+        for (++ _bufindr; _bufindr < sizeof(cmdbuffer) && cmdbuffer[_bufindr] == 0; ++ _bufindr) ;
+        // If the end of the buffer was empty,
+        if (_bufindr == sizeof(cmdbuffer)) {
+            // skip to the start and find the nonzero command.
+            for (_bufindr = 0; cmdbuffer[_bufindr] == 0; ++ _bufindr) ;
+        }
+    }
+  }
+#endif
+
+#if 0
+  saved_feedrate2 = feedrate; //save feedrate
+#else
+  // Try to deduce the feedrate from the first block of the planner.
+  // Speed is in mm/min.
+  saved_feedrate2 = planner.blocks_queued() ? (planner.block_buffer[planner.block_buffer_tail].nominal_speed * 60.f) : feedrate;
+#endif
+
+	planner_abort_hard(); //abort printing
+	memcpy(saved_pos, current_position, sizeof(saved_pos));
+	saved_active_extruder = active_extruder; //save active_extruder
+
+	//saved_extruder_under_pressure = extruder_under_pressure; //extruder under pressure flag - currently unused
+	saved_extruder_relative_mode = axis_relative_modes[E_AXIS];
+	cmdqueue_reset(); //empty cmdqueue
+	card.sdprinting = false;
+//	card.closefile();
+	saved_printing = true;
+  // We may have missed a stepper timer interrupt. Be safe than sorry, reset the stepper timer before re-enabling interrupts.
+  //st_reset_timer();
+	sei();
+	if ((z_move != 0) || (e_move != 0)) { // extruder or z move
+#if 1
+    // Rather than calling plan_buffer_line directly, push the move into the command queue, 
+    char buf[48];
+
+	// First unretract (relative extrusion)
+	if(!saved_extruder_relative_mode){
+	  strcpy_P(buf, PSTR("M83"));
+	  enquecommand(buf, false);
+	}
+	
+	//retract 45mm/s
+	strcpy_P(buf, PSTR("G1 E"));
+	dtostrf(e_move, 6, 3, buf + strlen(buf));
+	strcat_P(buf, PSTR(" F"));
+	dtostrf(2700, 8, 3, buf + strlen(buf));
+	enquecommand(buf, false);
+
+	// Then lift Z axis
+    strcpy_P(buf, PSTR("G1 Z"));
+    dtostrf(saved_pos[Z_AXIS] + z_move, 8, 3, buf + strlen(buf));
+    strcat_P(buf, PSTR(" F"));
+    dtostrf(homing_feedrate(Z_AXIS), 8, 3, buf + strlen(buf));
+    // At this point the command queue is empty.
+    enquecommand(buf, false);
+    // If this call is invoked from the main Arduino loop() function, let the caller know that the command
+    // in the command queue is not the original command, but a new one, so it should not be removed from the queue.
+    repeatcommand_front();
+#else
+		plan_buffer_line(saved_pos[X_AXIS], saved_pos[Y_AXIS], saved_pos[Z_AXIS] + z_move, saved_pos[E_AXIS] + e_move, homing_feedrate[Z_AXIS], active_extruder);
+    st_synchronize(); //wait moving
+    memcpy(current_position, saved_pos, sizeof(saved_pos));
+    memcpy(destination, current_position, sizeof(destination));
+#endif
+  }
+}
+
+void restore_print_from_ram_and_continue(float e_move)
+{
+	if (!saved_printing) return;
+//	for (int axis = X_AXIS; axis <= E_AXIS; axis++)
+//	    current_position[axis] = st_get_position_mm(axis);
+	active_extruder = saved_active_extruder; //restore active_extruder
+	feedrate = saved_feedrate2; //restore feedrate
+	axis_relative_modes[E_AXIS] = saved_extruder_relative_mode;
+	float e = saved_pos[E_AXIS] - e_move;
+	plan_set_e_position(e);
+	//first move print head in XY to the saved position:
+	planner.buffer_segment(saved_pos[X_AXIS], saved_pos[Y_AXIS], current_position[Z_AXIS], saved_pos[E_AXIS] - e_move, homing_feedrate(Z_AXIS)/13, active_extruder);
+	planner.synchronize();
+	//then move Z
+	planner.buffer_segment(saved_pos[X_AXIS], saved_pos[Y_AXIS], saved_pos[Z_AXIS], saved_pos[E_AXIS] - e_move, homing_feedrate(Z_AXIS)/13, active_extruder);
+	planner.synchronize();
+	//and finaly unretract (35mm/s)
+	planner.buffer_segment(saved_pos[X_AXIS], saved_pos[Y_AXIS], saved_pos[Z_AXIS], saved_pos[E_AXIS], 35, active_extruder);
+	planner.synchronize();
+
+	memcpy(current_position, saved_pos, sizeof(saved_pos));
+	memcpy(destination, current_position, sizeof(destination));
+	if (saved_printing_type == PRINTING_TYPE_SD) { //was sd printing
+		card.setIndex(saved_sdpos);
+		sdpos_atomic = saved_sdpos;
+		card.sdprinting = true;
+		printf_P(PSTR("ok\n")); //dummy response because of octoprint is waiting for this
+	}
+
+	//lcd_setstatuspgm(lang_get_translation(WELCOME_MSG));
+	saved_printing = false;
+}
+
+
+
+uint16_t cmdqueue_calc_sd_length()
+{
+    if (buflen == 0)
+        return 0;
+    union {
+        struct {
+            char lo;
+            char hi;
+        } lohi;
+        uint16_t value;
+    } sdlen_single;
+    uint16_t sdlen = 0;
+    for (size_t _buflen = buflen, _bufindr = bufindr;;) {
+        if (cmdbuffer[_bufindr] == CMDBUFFER_CURRENT_TYPE_SDCARD) {
+            sdlen_single.lohi.lo = cmdbuffer[_bufindr + 1];
+            sdlen_single.lohi.hi = cmdbuffer[_bufindr + 2];
+            sdlen += sdlen_single.value;
+        }
+        if (-- _buflen == 0)
+            break;
+        // First skip the current command ID and iterate up to the end of the string.
+        for (_bufindr += CMDHDRSIZE; cmdbuffer[_bufindr] != 0; ++ _bufindr) ;
+        // Second, skip the end of string null character and iterate until a nonzero command ID is found.
+        for (++ _bufindr; _bufindr < sizeof(cmdbuffer) && cmdbuffer[_bufindr] == 0; ++ _bufindr) ;
+        // If the end of the buffer was empty,
+        if (_bufindr == sizeof(cmdbuffer)) {
+            // skip to the start and find the nonzero command.
+            for (_bufindr = 0; cmdbuffer[_bufindr] == 0; ++ _bufindr) ;
+        }
+    }
+    return sdlen;
+}
+
+//***** jc ***
 /**
  * Manage several activities:
  *  - Check for Filament Runout
@@ -14736,7 +15151,7 @@ void loop() {
   if (commands_in_queue < BUFSIZE) get_available_commands();
 
   if (commands_in_queue) {
-
+    cmdbuffer_front_already_processed = false;
     #if ENABLED(SDSUPPORT)
 
       if (card.saving) {
@@ -14778,7 +15193,51 @@ void loop() {
       process_next_command();
 
     #endif // SDSUPPORT
-
+    if (! cmdbuffer_front_already_processed && buflen)
+    {
+      // ptr points to the start of the block currently being processed.
+      // The first character in the block is the block type.      
+      char *ptr = cmdbuffer + bufindr;
+      if (*ptr == CMDBUFFER_CURRENT_TYPE_SDCARD) {
+        // To support power panic, move the lenght of the command on the SD card to a planner buffer.
+        union {
+          struct {
+              char lo;
+              char hi;
+          } lohi;
+          uint16_t value;
+        } sdlen;
+        sdlen.value = 0;
+        {
+          // This block locks the interrupts globally for 3.25 us,
+          // which corresponds to a maximum repeat frequency of 307.69 kHz.
+          // This blocking is safe in the context of a 10kHz stepper driver interrupt
+          // or a 115200 Bd serial line receive interrupt, which will not trigger faster than 12kHz.
+          cli();
+          // Reset the command to something, which will be ignored by the power panic routine,
+          // so this buffer length will not be counted twice.
+          *ptr ++ = CMDBUFFER_CURRENT_TYPE_TO_BE_REMOVED;
+          // Extract the current buffer length.
+          sdlen.lohi.lo = *ptr ++;
+          sdlen.lohi.hi = *ptr;
+          // and pass it to the planner queue.
+          planner_add_sd_length(sdlen.value);
+          sei();
+        }
+	  }
+	  else if((*ptr == CMDBUFFER_CURRENT_TYPE_USB_WITH_LINENR) && !IS_SD_PRINTING){ 
+		  
+		  cli();
+          *ptr ++ = CMDBUFFER_CURRENT_TYPE_TO_BE_REMOVED;
+          // and one for each command to previous block in the planner queue.
+          planner_add_sd_length(1);
+          sei();
+	  }
+      // Now it is safe to release the already processed command block. If interrupted by the power panic now,
+      // this block's SD card length will not be counted twice as its command type has been replaced 
+      // by CMDBUFFER_CURRENT_TYPE_TO_BE_REMOVED.
+      cmdqueue_pop_front();
+    }
     // The queue may be reset by a command handler or by code invoked by idle() within a handler
     if (commands_in_queue) {
       --commands_in_queue;

@@ -51,7 +51,8 @@ bool report_tmc_status = false;
     bool is_error;
   };
   #if HAS_DRIVER(TMC2130)
-
+    extern void crashdet_stop_and_save_print();
+    extern void crashdet_stop_and_save_print2();
     bool tmc2130_sg_stop_on_crash = true;
     uint8_t tmc2130_sg_diag_mask = 0x00;
     uint8_t tmc2130_sg_crash = 0;
@@ -60,6 +61,7 @@ bool report_tmc_status = false;
     bool tmc2130_sg_change = false;  
     static uint32_t get_pwm_scale(TMC2130Stepper &st) { return st.PWM_SCALE(); }
     static uint8_t get_status_response(TMC2130Stepper &st) { return st.status_response & 0xF; }
+    uint8_t tmc2130_sg_homing_axes_mask = 0x00;
     static TMC_driver_data get_driver_data(TMC2130Stepper &st) {
       constexpr uint32_t OTPW_bm = 0x4000000UL;
       constexpr uint8_t OTPW_bp = 26;
@@ -166,6 +168,7 @@ bool report_tmc_status = false;
 
   #define HAS_HW_COMMS(ST) AXIS_DRIVER_TYPE(ST, TMC2130) || (AXIS_DRIVER_TYPE(ST, TMC2208) && defined(ST##_HARDWARE_SERIAL))
 
+
   uint8_t tmc2130_sample_diag()
   {
     uint8_t mask = 0;
@@ -178,11 +181,11 @@ bool report_tmc_status = false;
 
   void tmc2130_st_isr(uint8_t last_step_mask)
   {
-    if (tmc2130_mode == TMC2130_MODE_SILENT || tmc2130_sg_stop_on_crash == false) return;
+    if (/*tmc2130_mode == TMC2130_MODE_SILENT || */tmc2130_sg_stop_on_crash == false) return;
     uint8_t crash = 0;
     uint8_t diag_mask = tmc2130_sample_diag();
   //	for (uint8_t axis = X_AXIS; axis <= E_AXIS; axis++)
-    for (uint8_t axis = X_AXIS; axis <= Z_AXIS; axis++)
+    for (uint8_t axis = X_AXIS_MASK; axis <= Z_AXIS_MASK; axis++)
     {
       uint8_t mask = (X_AXIS_MASK << axis);
       if (diag_mask & mask) tmc2130_sg_err[axis]++;

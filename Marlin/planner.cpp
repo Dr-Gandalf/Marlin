@@ -233,6 +233,14 @@ void Planner::init() {
   delay_before_delivering = 0;
 }
 
+// Returns the index of the previous block in the ring buffer
+static inline int8_t prev_block_index(int8_t block_index) {
+  if (block_index == 0)
+    block_index = BLOCK_BUFFER_SIZE; 
+  -- block_index;
+  return block_index;
+}
+
 #if ENABLED(S_CURVE_ACCELERATION)
 
   /**
@@ -1677,7 +1685,7 @@ bool Planner::_populate_block(block_t * const block, bool split_move,
 
   // Clear all flags, including the "busy" bit
   block->flag = 0x00;
-
+  block->sdlen = 0;
   // Set direction bits
   block->direction_bits = dm;
 
@@ -1956,7 +1964,7 @@ bool Planner::_populate_block(block_t * const block, bool split_move,
       }
     }
   #endif
-
+  block->nominal_speed = block->millimeters * inverse_secs; // (mm/sec) Always > 0
   #if ENABLED(ULTRA_LCD)
     // Protect the access to the position.
     const bool was_enabled = STEPPER_ISR_ENABLED();
@@ -2624,3 +2632,28 @@ void Planner::refresh_positioning() {
   }
 
 #endif
+
+void planner_add_sd_length(uint16_t sdlen)
+{
+  if (planner.block_buffer_head != planner.block_buffer_tail) {
+    // The planner buffer is not empty. Get the index of the last buffer line entered,
+    // which is (block_buffer_head - 1) modulo BLOCK_BUFFER_SIZE.
+    planner.block_buffer[prev_block_index(planner.block_buffer_head)].sdlen += sdlen;
+  } else {
+    // There is no line stored in the planner buffer, which means the last command does not need to be revertible,
+    // at a power panic, so the length of this command may be forgotten.
+  }
+}
+
+uint16_t planner_calc_sd_length()
+{
+	unsigned char _block_buffer_head = planner.block_buffer_head;
+	unsigned char _block_buffer_tail = planner.block_buffer_tail;
+	uint16_t sdlen = 0;
+	while (_block_buffer_head != _block_buffer_tail)
+	{
+		sdlen += planner.block_buffer[_block_buffer_tail].sdlen;
+	    _block_buffer_tail = (_block_buffer_tail + 1) & (BLOCK_BUFFER_SIZE - 1);  
+	}
+	return sdlen;
+}

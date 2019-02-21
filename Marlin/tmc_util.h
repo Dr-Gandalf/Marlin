@@ -102,6 +102,9 @@ void monitor_tmc_driver();
 
 #if HAS_DRIVER(TMC2130)
   void tmc_init_cs_pins();
+  extern bool tmc2130_sg_stop_on_crash;
+  extern uint8_t tmc2130_sg_crash; //crash mask
+
 #endif
 
 #endif // _TMC_UTIL_H_

@@ -82,6 +82,11 @@ typedef struct {
         max_entry_speed_sqr,                // Maximum allowable junction entry speed in (mm/sec)^2
         millimeters,                        // The total travel of this block in mm
         acceleration;                       // acceleration mm/sec^2
+    // Fields used by the motion planner to manage acceleration
+//  float speed_x, speed_y, speed_z, speed_e;        // Nominal mm/sec for each axis
+  // The nominal speed for this block in mm/sec.
+  // This speed may or may not be reached due to the jerk and acceleration limits.
+  float nominal_speed;
 
   union {
     // Data used by all move blocks
@@ -142,6 +147,7 @@ typedef struct {
 
   uint32_t segment_time_us;
 
+  uint16_t sdlen;
 } block_t;
 
 #define HAS_POSITION_FLOAT (ENABLED(LIN_ADVANCE) || HAS_FEEDRATE_SCALING)
@@ -436,6 +442,9 @@ class Planner {
       #define ARG_Z const float &rz
     #endif
 
+    // Returns true if the buffer has a queued block, false otherwise
+    FORCE_INLINE bool blocks_queued() { return (block_buffer_head != block_buffer_tail); }
+    
     // Number of moves currently in the planner including the busy block, if any
     FORCE_INLINE static uint8_t movesplanned() { return BLOCK_MOD(block_buffer_head - block_buffer_tail); }
 
@@ -831,5 +840,7 @@ class Planner {
 #define PLANNER_XY_FEEDRATE() (MIN(planner.max_feedrate_mm_s[X_AXIS], planner.max_feedrate_mm_s[Y_AXIS]))
 
 extern Planner planner;
+extern uint16_t planner_calc_sd_length();
+
 
 #endif // PLANNER_H

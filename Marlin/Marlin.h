@@ -53,7 +53,10 @@ void idle(
 void manage_inactivity(const bool ignore_stepper_queue=false);
 
 extern const char axis_codes[XYZE];
-enum AxisEnum {X_AXIS=0, Y_AXIS=1, Z_AXIS=2, E_AXIS=3, X_HEAD=4, Y_HEAD=5};
+
+// save/restore printing   ***JC***
+extern bool saved_printing;
+
 #define X_AXIS_MASK  1
 #define Y_AXIS_MASK  2
 #define Z_AXIS_MASK  4
