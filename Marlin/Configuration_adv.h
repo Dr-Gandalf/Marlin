@@ -177,14 +177,14 @@
  * Thermal Protection parameters for the bed are just as above for hotends.
  */
 #if ENABLED(THERMAL_PROTECTION_BED)
-  #define THERMAL_PROTECTION_BED_PERIOD        20 // Seconds
-  #define THERMAL_PROTECTION_BED_HYSTERESIS     2 // Degrees Celsius
+  #define THERMAL_PROTECTION_BED_PERIOD        60 // Seconds
+  #define THERMAL_PROTECTION_BED_HYSTERESIS     4 // Degrees Celsius
 
   /**
    * As described above, except for the bed (M140/M190/M303).
    */
-  #define WATCH_BED_TEMP_PERIOD                60 // Seconds
-  #define WATCH_BED_TEMP_INCREASE               2 // Degrees Celsius
+  #define WATCH_BED_TEMP_PERIOD                120 // Seconds
+  #define WATCH_BED_TEMP_INCREASE               4 // Degrees Celsius
 #endif
 
 /**
@@ -1607,7 +1607,7 @@
     // Park position to wait for probe cooldown
     #define PTC_PARK_POS_X 250.0F
     #define PTC_PARK_POS_Y 210.0F
-    #define PTC_PARK_POS_Z 200.0F
+    #define PTC_PARK_POS_Z 0.5F
 
     // Probe position to probe and wait for probe to reach target temperature
     #define PTC_PROBE_POS_X  120.0F
