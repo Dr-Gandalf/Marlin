@@ -97,8 +97,9 @@ void GcodeSuite::G76() {
   };
 
   auto wait_for_temps = [&](const float tb, const float tp, millis_t &ntr, const millis_t timeout=0) {
-    SERIAL_ECHOLNPGM("Waiting for bed and probe temperature.");
-    while (fabs(thermalManager.degBed() - tb) > 0.1f || thermalManager.degProbe() > tp)
+    SERIAL_ECHOLNPAIR_F("Waiting for bed and probe temperature. probe ",tp);
+    SERIAL_ECHOLNPAIR_F("Waiting for bed and probe temperature. bed ",tb);
+    while (fabs(thermalManager.degBed() - 110.0f) > 0.1f || thermalManager.degProbe() > tp)
       if (report_temps(ntr, timeout)) return true;
     return false;
   };

@@ -48,7 +48,7 @@ class ProbeTempComp {
   public:
 
     static constexpr temp_calib_t cali_info_init[TSI_COUNT] = {
-        {  10,  5,  30,  30 + 10 *  5 },       // Probe
+        {  20,  1,  25,  25 + 20 *  1 },       // Probe
         {  10,  5,  60,  60 + 10 *  5 },       // Bed
       #if ENABLED(USE_TEMP_EXT_COMPENSATION)
         {  20,  5, 180, 180 +  5 * 20 }        // Extruder
@@ -68,7 +68,7 @@ class ProbeTempComp {
 
     static constexpr int  max_bed_temp         = PTC_MAX_BED_TEMP,  // Max temperature to avoid heating errors
                           probe_calib_bed_temp = max_bed_temp,      // Bed temperature while calibrating probe
-                          bed_calib_probe_temp = 30;                // Probe temperature while calibrating bed
+                          bed_calib_probe_temp = 25;                // Probe temperature while calibrating bed
 
     static int16_t *sensor_z_offsets[TSI_COUNT],
                    z_offsets_probe[cali_info_init[TSI_PROBE].measurements], // (µm)
