@@ -58,7 +58,7 @@
 
   #define X_STOP_PIN                          12
   #define Y_STOP_PIN                          11
-  #define Z_STOP_PIN                          10
+  #define Z_STOP_PIN                          79 // 10 JC
 
 #else
 
@@ -124,7 +124,7 @@
 // Heaters / Fans
 //
 #define HEATER_0_PIN                           3
-#define HEATER_BED_PIN                         4
+#define HEATER_BED_PIN                         76 // 4 jc
 
 #ifndef FAN_PIN
   #ifdef MK3_FAN_PINS
