@@ -667,9 +667,9 @@
     #define DEFAULT_Ki_LIST {   1.08,   1.08 }
     #define DEFAULT_Kd_LIST { 114.00, 114.00 }
   #else
-    #define DEFAULT_Kp  10.20 
-    #define DEFAULT_Ki   0.50
-    #define DEFAULT_Kd  51.83
+    #define DEFAULT_Kp 11.70
+    #define DEFAULT_Ki 0.59
+    #define DEFAULT_Kd 57.77
   #endif
 #endif
 
@@ -752,9 +752,9 @@
 
   // 120V 250W silicone heater into 4mm borosilicate (MendelMax 1.5+)
   // from FOPDT model - kp=.39 Tp=405 Tdead=66, Tc set to 79.2, aggressive factor of .15 (vs .1, 1, 10)
-    #define DEFAULT_bedKp 108.45
-    #define DEFAULT_bedKi 16.76
-    #define DEFAULT_bedKd 175.46
+    #define DEFAULT_bedKp 14.16
+    #define DEFAULT_bedKi 0.68
+    #define DEFAULT_bedKd 195.62
 
   // FIND YOUR OWN: "M303 E-1 C8 S90" to run autotune on the bed at 90 degreesC for 8 cycles.
 #endif // PIDTEMPBED
@@ -894,7 +894,7 @@
   #define DEFAULT_SEGMENTS_PER_SECOND 60
 
   // After homing move down to a height where XY movement is unconstrained
-  #define DELTA_HOME_TO_SAFE_ZONE
+  //#define DELTA_HOME_TO_SAFE_ZONE
 
   // Delta calibration menu
   // Add three-point calibration to the MarlinUI menu.
